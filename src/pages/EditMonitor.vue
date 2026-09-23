@@ -1763,6 +1763,45 @@
                                 />
                             </div>
 
+                            <div class="my-3">
+                                <div class="form-check">
+                                    <input
+                                        id="skip-time-enabled"
+                                        v-model="monitor.skipTimeEnabled"
+                                        type="checkbox"
+                                        class="form-check-input"
+                                    />
+                                    <label for="skip-time-enabled" class="form-check-label">
+                                        {{ $t("skipTimeEnabled") }}
+                                    </label>
+                                </div>
+                                <div class="form-text">{{ $t("skipTimeDescription") }}</div>
+                                <div v-if="monitor.skipTimeEnabled" class="row mt-2">
+                                    <div class="col">
+                                        <label for="skip-time-start" class="form-label">
+                                            {{ $t("skipTimeStart") }}
+                                        </label>
+                                        <input
+                                            id="skip-time-start"
+                                            v-model="monitor.skipTimeStart"
+                                            type="time"
+                                            class="form-control"
+                                            required
+                                        />
+                                    </div>
+                                    <div class="col">
+                                        <label for="skip-time-end" class="form-label">{{ $t("skipTimeEnd") }}</label>
+                                        <input
+                                            id="skip-time-end"
+                                            v-model="monitor.skipTimeEnd"
+                                            type="time"
+                                            class="form-control"
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
                             <h2 v-if="monitor.type !== 'push'" class="mt-5 mb-2">{{ $t("Advanced") }}</h2>
 
                             <div
@@ -3370,6 +3409,9 @@ const monitorDefaults = {
     resendInterval: 0,
     maxretries: 0,
     retryOnlyOnStatusCodeFailure: false,
+    skipTimeEnabled: false,
+    skipTimeStart: "",
+    skipTimeEnd: "",
     notificationIDList: {},
     ignoreTls: false,
     upsideDown: false,

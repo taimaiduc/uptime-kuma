@@ -645,5 +645,9 @@
     "ignoredTLSError": "Lỗi TLS/SSL đã được bỏ qua",
     "Ignore Sec-WebSocket-Accept header": "Đã bỏ qua {0} header",
     "saveResponseForNotifications": "Lưu phản hồi thành công của HTTP để Thông báo",
-    "saveErrorResponseForNotifications": "Lưu phản hồi thất bại của HTTP để Thông báo"
+    "saveErrorResponseForNotifications": "Lưu phản hồi thất bại của HTTP để Thông báo",
+    "skipTimeEnabled": "Không chạy kiểm tra trong khung giờ",
+    "skipTimeDescription": "Bỏ qua kiểm tra mỗi ngày trong khoảng từ giờ bắt đầu đến giờ kết thúc (theo múi giờ server). Hỗ trợ khung giờ qua nửa đêm, ví dụ 22:00 đến 06:00.",
+    "skipTimeStart": "Bỏ qua từ",
+    "skipTimeEnd": "Bỏ qua đến"
 }

@@ -616,6 +616,9 @@ app.use(function (req, res, next) {
                 bean.sshPrivateKey = monitor.sshPrivateKey;
                 bean.sshPassphrase = monitor.sshPassphrase;
                 bean.sshAuthMethod = monitor.sshAuthMethod;
+                bean.skipTimeEnabled = Boolean(monitor.skipTimeEnabled);
+                bean.skipTimeStart = monitor.skipTimeStart || null;
+                bean.skipTimeEnd = monitor.skipTimeEnd || null;
                 bean.ntp_stratum_threshold = monitor.ntpStratumThreshold;
                 bean.ntp_time_offset_threshold = monitor.ntpTimeOffsetThreshold;
                 bean.ntp_root_dispersion_threshold = monitor.ntpRootDispersionThreshold;
