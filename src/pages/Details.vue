@@ -782,6 +782,11 @@ export default {
          * @returns {string} Censored URL
          */
         filterPassword(urlString) {
+            // Nothing to censor when the value is missing (e.g. a mysql monitor
+            // configured with separate host/port fields has no connection string)
+            if (typeof urlString !== "string") {
+                return urlString;
+            }
             try {
                 let parsedUrl = new URL(urlString);
                 if (parsedUrl.password !== "") {

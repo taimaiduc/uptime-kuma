@@ -208,6 +208,9 @@ class Monitor extends BeanModel {
             expectedTlsAlert: this.expected_tls_alert,
             sftpPath: this.sftpPath,
             sshAuthMethod: this.sshAuthMethod || "password",
+            skipTimeEnabled: Boolean(this.skipTimeEnabled),
+            skipTimeStart: this.skipTimeStart,
+            skipTimeEnd: this.skipTimeEnd,
 
             // ping advanced options
             ping_numeric: this.isPingNumeric(),
@@ -330,6 +333,36 @@ class Monitor extends BeanModel {
      */
     getWsIgnoreSecWebsocketAcceptHeader() {
         return Boolean(this.wsIgnoreSecWebsocketAcceptHeader);
+    }
+
+    /**
+     * Check if the current server time is inside the monitor's skip time window.
+     * Supports windows across midnight, e.g. 22:00 - 06:00.
+     * @returns {boolean} True if the check should be skipped
+     */
+    isInSkipTimeWindow() {
+        if (!this.skipTimeEnabled || !this.skipTimeStart || !this.skipTimeEnd) {
+            return false;
+        }
+
+        const toMinutes = (time) => {
+            const [hour, minute] = time.split(":").map(Number);
+            return hour * 60 + minute;
+        };
+
+        const start = toMinutes(this.skipTimeStart);
+        const end = toMinutes(this.skipTimeEnd);
+        if (isNaN(start) || isNaN(end) || start === end) {
+            return false;
+        }
+
+        const now = dayjs();
+        const current = now.hour() * 60 + now.minute();
+
+        if (start < end) {
+            return current >= start && current < end;
+        }
+        return current >= start || current < end;
     }
 
     /**
@@ -473,7 +506,12 @@ class Monitor extends BeanModel {
             }
 
             try {
-                if (await Monitor.isUnderMaintenance(this.id)) {
+                if (this.isInSkipTimeWindow()) {
+                    // Reuse the neutral MAINTENANCE status so the beat is excluded
+                    // from uptime and does not trigger notifications
+                    bean.msg = "Skipped (time window)";
+                    bean.status = MAINTENANCE;
+                } else if (await Monitor.isUnderMaintenance(this.id)) {
                     bean.msg = "Monitor under maintenance";
                     bean.status = MAINTENANCE;
                 } else if (this.type === "http" || this.type === "keyword" || this.type === "json-query") {

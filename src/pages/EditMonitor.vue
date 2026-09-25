@@ -1555,7 +1555,18 @@
                                 "
                             >
                                 <div class="my-3">
-                                    <label for="sqlQuery" class="form-label">{{ $t("Query") }}</label>
+                                    <div class="d-flex align-items-center justify-content-between mb-2">
+                                        <label for="sqlQuery" class="form-label mb-0">{{ $t("Query") }}</label>
+                                        <button
+                                            type="button"
+                                            class="btn btn-outline-primary btn-sm"
+                                            :disabled="!monitor.databaseConnectionString"
+                                            @click="runSqlQuery"
+                                        >
+                                            <font-awesome-icon icon="play" />
+                                            {{ $t("Run SQL") }}
+                                        </button>
+                                    </div>
                                     <textarea
                                         id="sqlQuery"
                                         v-model="monitor.databaseQuery"
@@ -1761,6 +1772,45 @@
                                     min="0"
                                     step="1"
                                 />
+                            </div>
+
+                            <div class="my-3">
+                                <div class="form-check">
+                                    <input
+                                        id="skip-time-enabled"
+                                        v-model="monitor.skipTimeEnabled"
+                                        type="checkbox"
+                                        class="form-check-input"
+                                    />
+                                    <label for="skip-time-enabled" class="form-check-label">
+                                        {{ $t("skipTimeEnabled") }}
+                                    </label>
+                                </div>
+                                <div class="form-text">{{ $t("skipTimeDescription") }}</div>
+                                <div v-if="monitor.skipTimeEnabled" class="row mt-2">
+                                    <div class="col">
+                                        <label for="skip-time-start" class="form-label">
+                                            {{ $t("skipTimeStart") }}
+                                        </label>
+                                        <input
+                                            id="skip-time-start"
+                                            v-model="monitor.skipTimeStart"
+                                            type="time"
+                                            class="form-control"
+                                            required
+                                        />
+                                    </div>
+                                    <div class="col">
+                                        <label for="skip-time-end" class="form-label">{{ $t("skipTimeEnd") }}</label>
+                                        <input
+                                            id="skip-time-end"
+                                            v-model="monitor.skipTimeEnd"
+                                            type="time"
+                                            class="form-control"
+                                            required
+                                        />
+                                    </div>
+                                </div>
                             </div>
 
                             <h2 v-if="monitor.type !== 'push'" class="mt-5 mb-2">{{ $t("Advanced") }}</h2>
@@ -3299,6 +3349,7 @@
             <ProxyDialog ref="proxyDialog" @added="addedProxy" />
             <CreateGroupDialog ref="createGroupDialog" @added="addedDraftGroup" />
             <RemoteBrowserDialog ref="remoteBrowserDialog" />
+            <SqlResultDialog ref="sqlResultDialog" />
             <Confirm
                 ref="confirmLowIntervalValue"
                 btn-style="btn-danger"
@@ -3323,6 +3374,7 @@ import Confirm from "../components/Confirm.vue";
 import NotificationDialog from "../components/NotificationDialog.vue";
 import DockerHostDialog from "../components/DockerHostDialog.vue";
 import RemoteBrowserDialog from "../components/RemoteBrowserDialog.vue";
+import SqlResultDialog from "../components/SqlResultDialog.vue";
 import ProxyDialog from "../components/ProxyDialog.vue";
 import TagsManager from "../components/TagsManager.vue";
 import {
@@ -3370,6 +3422,9 @@ const monitorDefaults = {
     resendInterval: 0,
     maxretries: 0,
     retryOnlyOnStatusCodeFailure: false,
+    skipTimeEnabled: false,
+    skipTimeStart: "",
+    skipTimeEnd: "",
     notificationIDList: {},
     ignoreTls: false,
     upsideDown: false,
@@ -3430,6 +3485,7 @@ export default {
         NotificationDialog,
         DockerHostDialog,
         RemoteBrowserDialog,
+        SqlResultDialog,
         TagsManager,
         VueMultiselect,
         EditMonitorConditions,
@@ -4071,6 +4127,21 @@ message HealthCheckResponse {
         this.kafkaSaslMechanismOptions = kafkaSaslMechanismOptions;
     },
     methods: {
+        /**
+         * Run the SQL query from the form and show the result in a popup
+         * @returns {void}
+         */
+        runSqlQuery() {
+            this.$refs.sqlResultDialog.run({
+                type: this.monitor.type,
+                databaseConnectionString: this.monitor.databaseConnectionString,
+                databaseQuery: this.monitor.databaseQuery,
+                radiusPassword: this.monitor.radiusPassword,
+                basic_auth_user: this.monitor.basic_auth_user,
+                basic_auth_pass: this.monitor.basic_auth_pass,
+            });
+        },
+
         loadPM2ProcessList() {
             this.pm2ProcessLoading = true;
             this.pm2ProcessError = "";
