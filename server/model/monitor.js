@@ -207,6 +207,9 @@ class Monitor extends BeanModel {
             expectedTlsAlert: this.expected_tls_alert,
             sftpPath: this.sftpPath,
             sshAuthMethod: this.sshAuthMethod || "password",
+            skipTimeEnabled: Boolean(this.skipTimeEnabled),
+            skipTimeStart: this.skipTimeStart,
+            skipTimeEnd: this.skipTimeEnd,
 
             // ping advanced options
             ping_numeric: this.isPingNumeric(),
@@ -440,6 +443,15 @@ class Monitor extends BeanModel {
                     console.log("beat interval too low, reset to 20s");
                     beatInterval = 20;
                 }
+            }
+
+            // Do not run the check inside the configured skip time window
+            if (this.isInSkipTimeWindow()) {
+                log.debug("monitor", `[${this.name}] In skip time window, skip this check.`);
+                if (!this.isStop) {
+                    this.heartbeatInterval = setTimeout(safeBeat, beatInterval * 1000);
+                }
+                return;
             }
 
             // Expose here for prometheus update
@@ -1116,6 +1128,36 @@ class Monitor extends BeanModel {
         } else {
             safeBeat();
         }
+    }
+
+    /**
+     * Check if the current server time is inside the monitor's skip time window.
+     * Supports windows across midnight, e.g. 22:00 - 06:00.
+     * @returns {boolean} True if the check should be skipped
+     */
+    isInSkipTimeWindow() {
+        if (!this.skipTimeEnabled || !this.skipTimeStart || !this.skipTimeEnd) {
+            return false;
+        }
+
+        const toMinutes = (time) => {
+            const [hour, minute] = time.split(":").map(Number);
+            return hour * 60 + minute;
+        };
+
+        const start = toMinutes(this.skipTimeStart);
+        const end = toMinutes(this.skipTimeEnd);
+        if (isNaN(start) || isNaN(end) || start === end) {
+            return false;
+        }
+
+        const now = dayjs();
+        const current = now.hour() * 60 + now.minute();
+
+        if (start < end) {
+            return current >= start && current < end;
+        }
+        return current >= start || current < end;
     }
 
     /**
