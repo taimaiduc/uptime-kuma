@@ -651,6 +651,7 @@
     "sqlResultSummary": "{0} dòng trong {1} ms.",
     "sqlResultTruncated": "Chỉ hiển thị {0} dòng đầu tiên.",
     "sqlResultNoRows": "Truy vấn không trả về dòng nào.",
+    "sqlResultCountRewritten": "Đã thay COUNT(*) bằng * để hiển thị danh sách các dòng khớp điều kiện.",
     "skipTimeEnabled": "Không chạy kiểm tra trong khung giờ",
     "skipTimeDescription": "Bỏ qua kiểm tra mỗi ngày trong khoảng từ giờ bắt đầu đến giờ kết thúc (theo múi giờ server). Hỗ trợ khung giờ qua nửa đêm, ví dụ 22:00 đến 06:00.",
     "skipTimeStart": "Bỏ qua từ",

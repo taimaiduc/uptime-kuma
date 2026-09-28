@@ -16,6 +16,7 @@
                     <div v-else-if="error" class="alert alert-danger mb-0">{{ error }}</div>
 
                     <template v-else-if="result">
+                        <div v-if="note" class="alert alert-info py-2">{{ note }}</div>
                         <p class="form-text mt-0">
                             {{ $t("sqlResultSummary", [result.total, result.duration]) }}
                             <span v-if="result.truncated">{{ $t("sqlResultTruncated", [result.rows.length]) }}</span>
@@ -55,6 +56,7 @@ export default {
             processing: false,
             result: null,
             error: null,
+            note: null,
         };
     },
     mounted() {
@@ -67,9 +69,11 @@ export default {
         /**
          * Show the dialog and run the query of the given monitor
          * @param {object} monitor Monitor data from the edit form
+         * @param {string|null} note Optional hint shown above the result
          * @returns {void}
          */
-        run(monitor) {
+        run(monitor, note = null) {
+            this.note = note;
             this.processing = true;
             this.result = null;
             this.error = null;

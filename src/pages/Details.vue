@@ -143,6 +143,10 @@
                         {{ $t("Delete") }}
                     </button>
                 </div>
+                <button v-if="isSqlMonitor" class="btn btn-normal ms-2" @click="runSqlQuery">
+                    <font-awesome-icon icon="play" />
+                    {{ $t("Run SQL") }}
+                </button>
             </div>
 
             <div class="shadow-box">
@@ -383,6 +387,8 @@
                 </div>
             </div>
 
+            <SqlResultDialog ref="sqlResultDialog" />
+
             <Confirm ref="confirmPause" :yes-text="$t('Yes')" :no-text="$t('No')" @yes="pauseMonitor">
                 {{ $t("pauseMonitorMsg") }}
             </Confirm>
@@ -441,6 +447,7 @@ import { defineAsyncComponent } from "vue";
 import { useToast } from "vue-toastification";
 const toast = useToast();
 import Confirm from "../components/Confirm.vue";
+import SqlResultDialog from "../components/SqlResultDialog.vue";
 import HeartbeatBar from "../components/HeartbeatBar.vue";
 import Status from "../components/Status.vue";
 import Datetime from "../components/Datetime.vue";
@@ -477,6 +484,7 @@ export default {
         CertificateInfo,
         PrismEditor,
         ScreenshotDialog,
+        SqlResultDialog,
     },
     data() {
         return {
@@ -504,6 +512,10 @@ export default {
         monitor() {
             let id = this.$route.params.id;
             return this.$root.monitorList[id];
+        },
+
+        isSqlMonitor() {
+            return ["mysql", "postgres", "sqlserver", "oracledb"].includes(this.monitor?.type);
         },
 
         /**
@@ -641,6 +653,35 @@ export default {
 
     methods: {
         getResBaseURL,
+        /**
+         * Run the monitor's SQL query and show the matching rows in a popup.
+         * A "SELECT COUNT(*) ... FROM" query is turned into "SELECT * ... FROM",
+         * so the rows behind the count are listed instead of the count itself.
+         * @returns {void}
+         */
+        runSqlQuery() {
+            let query = this.monitor.databaseQuery || "";
+            let note = null;
+            const countPattern = /^\s*SELECT\s+COUNT\s*\(\s*(\*|1)\s*\)(\s+(AS\s+)?[`"\w]+)?\s+FROM\b/i;
+            // A COUNT with GROUP BY returns one row per group, which is already a useful list
+            if (countPattern.test(query) && !/\bGROUP\s+BY\b/i.test(query)) {
+                query = query.replace(countPattern, "SELECT * FROM");
+                note = this.$t("sqlResultCountRewritten");
+            }
+
+            this.$refs.sqlResultDialog.run(
+                {
+                    type: this.monitor.type,
+                    databaseConnectionString: this.monitor.databaseConnectionString,
+                    databaseQuery: query,
+                    radiusPassword: this.monitor.radiusPassword,
+                    basic_auth_user: this.monitor.basic_auth_user,
+                    basic_auth_pass: this.monitor.basic_auth_pass,
+                },
+                note
+            );
+        },
+
         /**
          * Request a test notification be sent for this monitor
          * @returns {void}
