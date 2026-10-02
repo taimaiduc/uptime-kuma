@@ -3,7 +3,7 @@ const { UP } = require("../../src/util");
 const dayjs = require("dayjs");
 const mysql = require("mysql2");
 const { ConditionVariable } = require("../monitor-conditions/variables");
-const { defaultStringOperators } = require("../monitor-conditions/operators");
+const { defaultStringOperators, defaultNumberOperators } = require("../monitor-conditions/operators");
 const { ConditionExpressionGroup } = require("../monitor-conditions/expression");
 const { evaluateExpressionGroup } = require("../monitor-conditions/evaluator");
 
@@ -11,7 +11,10 @@ class MysqlMonitorType extends MonitorType {
     name = "mysql";
 
     supportsConditions = true;
-    conditionVariables = [new ConditionVariable("result", defaultStringOperators)];
+    conditionVariables = [
+        new ConditionVariable("result", defaultStringOperators),
+        new ConditionVariable("row_count", defaultNumberOperators),
+    ];
 
     /**
      * @inheritdoc
@@ -32,14 +35,23 @@ class MysqlMonitorType extends MonitorType {
         const startTime = dayjs().valueOf();
         try {
             if (hasConditions) {
-                // When conditions are enabled, expect a single value result
-                const result = await this.mysqlQuerySingleValue(monitor.databaseConnectionString, query, password);
+                const rows = await this.mysqlQueryRows(monitor.databaseConnectionString, query, password);
                 heartbeat.ping = dayjs().valueOf() - startTime;
 
-                const conditionsResult = evaluateExpressionGroup(conditions, { result: String(result) });
+                const context = { row_count: rows.length };
+                let detail = `rows: ${rows.length}`;
+
+                // Only require a single value result when a condition actually tests "result"
+                if (collectConditionVariables(conditions).has("result")) {
+                    const result = this.extractSingleValue(rows);
+                    context.result = String(result);
+                    detail = String(result);
+                }
+
+                const conditionsResult = evaluateExpressionGroup(conditions, context);
 
                 if (!conditionsResult) {
-                    throw new Error(`Query result did not meet the specified conditions (${result})`);
+                    throw new Error(`Query result did not meet the specified conditions (${detail})`);
                 }
 
                 heartbeat.status = UP;
@@ -101,13 +113,13 @@ class MysqlMonitorType extends MonitorType {
     }
 
     /**
-     * Run a query on MySQL/MariaDB expecting a single value result
+     * Run a query on MySQL/MariaDB and return the result rows
      * @param {string} connectionString The database connection string
      * @param {string} query The query to execute
      * @param {string} password Optional password override
-     * @returns {Promise<any>} Single value from the first column of the first row
+     * @returns {Promise<object[]>} Result rows
      */
-    mysqlQuerySingleValue(connectionString, query, password = undefined) {
+    mysqlQueryRows(connectionString, query, password = undefined) {
         return new Promise((resolve, reject) => {
             const connection = mysql.createConnection({
                 uri: connectionString,
@@ -130,32 +142,61 @@ class MysqlMonitorType extends MonitorType {
                     return;
                 }
 
-                // Check if we have results
-                if (!Array.isArray(res) || res.length === 0) {
-                    reject(new Error("Query returned no results"));
+                if (!Array.isArray(res)) {
+                    reject(new Error("No Error, but the result is not an array. Type: " + typeof res));
                     return;
                 }
 
-                // Check if we have multiple rows
-                if (res.length > 1) {
-                    reject(new Error("Multiple values were found, expected only one value"));
-                    return;
-                }
-
-                const firstRow = res[0];
-                const columnNames = Object.keys(firstRow);
-
-                // Check if we have multiple columns
-                if (columnNames.length > 1) {
-                    reject(new Error("Multiple columns were found, expected only one value"));
-                    return;
-                }
-
-                // Return the single value from the first (and only) column
-                resolve(firstRow[columnNames[0]]);
+                resolve(res);
             });
         });
     }
+
+    /**
+     * Extract a single value from query result rows
+     * @param {object[]} res Result rows
+     * @returns {any} Single value from the first column of the first row
+     * @throws {Error} If the result is not exactly one row with one column
+     */
+    extractSingleValue(res) {
+        // Check if we have results
+        if (res.length === 0) {
+            throw new Error("Query returned no results");
+        }
+
+        // Check if we have multiple rows
+        if (res.length > 1) {
+            throw new Error("Multiple values were found, expected only one value");
+        }
+
+        const firstRow = res[0];
+        const columnNames = Object.keys(firstRow);
+
+        // Check if we have multiple columns
+        if (columnNames.length > 1) {
+            throw new Error("Multiple columns were found, expected only one value");
+        }
+
+        // Return the single value from the first (and only) column
+        return firstRow[columnNames[0]];
+    }
+}
+
+/**
+ * Collect all variable IDs referenced by a condition group
+ * @param {ConditionExpressionGroup} group Condition group
+ * @param {Set<string>} vars Accumulator
+ * @returns {Set<string>} Referenced variable IDs
+ */
+function collectConditionVariables(group, vars = new Set()) {
+    for (const child of group.children) {
+        if (child instanceof ConditionExpressionGroup) {
+            collectConditionVariables(child, vars);
+        } else {
+            vars.add(child.variable);
+        }
+    }
+    return vars;
 }
 
 module.exports = {
